@@ -1,0 +1,135 @@
+from django.db import transaction
+from rest_framework import serializers
+from store.order.models import Order, OrderItem
+from store.product.models import ProductVariant, Product
+from store.user.models import User
+from store.user.api.serializers import CustomerSerializer, RetailerSerializer
+from store.product.api.serializers import ProductVariantSerializer
+import json
+
+class OrderSerializer(serializers.ModelSerializer):
+
+    customer_name = serializers.SerializerMethodField()
+    retailer_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            'customer',
+            'retailer',
+            'total_price',
+            'created_at',
+            'updated_at',
+            'customer_name',
+            'retailer_name'
+        ]
+
+    def get_customer_name(self, obj):
+        if obj.customer.first_name:
+            return f"{obj.customer.first_name} {obj.customer.last_name}" 
+        else:
+            return f"{obj.customer.username}"
+        
+    def get_retailer_name(self, obj):
+        if obj.retailer.first_name:
+            return f"{obj.retailer.first_name} {obj.retailer.last_name}" 
+        else:
+            return f"{obj.retailer.username}"
+        
+
+
+class OrderCreateSerializer(serializers.ModelSerializer):
+
+    customer_name = serializers.CharField(write_only=True)
+    retailer_name = serializers.CharField(write_only=True)
+    variant_payload = serializers.ListField(write_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            # 'customer',
+            # 'retailer',
+            'total_price',
+            'created_at',
+            'updated_at',
+            'customer_name',
+            'retailer_name',
+            'variant_payload',
+            'total_qty',
+        ]
+
+    def create(self, validated_data):
+        # Extract the fields from validated_data
+        variant_payload = validated_data.pop('variant_payload', [])
+        customer_name = validated_data.get('customer_name', '')
+        retailer_name = validated_data.get('retailer_name', '')
+        total_price = validated_data.get('total_price', 0)
+        total_qty = validated_data.get('total_qty', 0)
+
+        customer, created = User.objects.get_or_create(
+            username=customer_name, 
+            defaults={'role': 'CUSTOMER'}
+        )
+
+        retailer, created = User.objects.get_or_create(
+            username=retailer_name, 
+            defaults={'role': 'RETAILER'}
+        )
+
+        order = Order.objects.create(
+            customer=customer,
+            retailer=retailer,
+            total_price=total_price,
+            total_qty=total_qty
+        )
+
+        for variant in variant_payload:
+            variant_instance = ProductVariant.objects.get(id = variant['id'])
+            OrderItem.objects.create(
+                order=order, 
+                product_variant=variant_instance,
+                quantity=variant['quantity'],
+                price=variant['price'],
+            )
+
+        return order
+
+
+
+class OrderDetailSerializer(serializers.ModelSerializer):
+
+    customer = CustomerSerializer(read_only=True)
+    retailer = RetailerSerializer(read_only=True)
+    variants = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            'customer',
+            'retailer',
+            'total_price',
+            'created_at',
+            'updated_at',
+            'variants',
+            'total_qty',
+        ]
+
+    def get_variants(self, obj):
+        # print(obj.items, '-----------')
+        variant_list = []
+
+        for item in obj.items.all():
+            variant_list.append({
+                    "id": item.id,
+                    "name": item.product_variant.name,
+                    "unit_price": item.price/item.quantity,
+                    "quantity": item.quantity,
+                    "price": item.price,
+                })
+
+        print(variant_list, "------------")
+
+        return variant_list
