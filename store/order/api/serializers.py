@@ -19,6 +19,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'customer',
             'retailer',
             'total_price',
+            'total_qty',
             'created_at',
             'updated_at',
             'customer_name',
@@ -65,8 +66,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         variant_payload = validated_data.pop('variant_payload', [])
         customer_name = validated_data.get('customer_name', '')
         retailer_name = validated_data.get('retailer_name', '')
-        total_price = validated_data.get('total_price', 0)
-        total_qty = validated_data.get('total_qty', 0)
+
+        total_price = 0
+        total_qty = 0
 
         customer, created = User.objects.get_or_create(
             username=customer_name, 
@@ -78,6 +80,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             defaults={'role': 'RETAILER'}
         )
 
+ 
         order = Order.objects.create(
             customer=customer,
             retailer=retailer,
@@ -85,7 +88,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             total_qty=total_qty
         )
 
+     
+
         for variant in variant_payload:
+            total_price += float(variant['price'])
+            total_qty += float(variant['quantity'])
+
             variant_instance = ProductVariant.objects.get(id = variant['id'])
             OrderItem.objects.create(
                 order=order, 
@@ -93,6 +101,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 quantity=variant['quantity'],
                 price=variant['price'],
             )
+
+        order.total_price = total_price
+        order.total_qty = total_qty
+        order.save()
 
         return order
 

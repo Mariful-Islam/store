@@ -13,7 +13,6 @@ class OrderModelViewSet(viewsets.ModelViewSet):
         if self.request.method == 'POST':
             return OrderCreateSerializer
         elif self.action == 'retrieve':
-            print('hhhhhhhhhh')
             return OrderDetailSerializer
         else:
             return OrderSerializer

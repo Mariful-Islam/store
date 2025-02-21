@@ -1,7 +1,11 @@
 from django.urls import path
-from store.user.api.views import CustomerListView, RetailerListView
+from rest_framework.routers import DefaultRouter
+from store.user.api.views import CustomerView, RetailerView
 
-urlpatterns = [
-    path('customers/', CustomerListView.as_view(), name='customer-list-create'),
-    path('retailers/', RetailerListView.as_view(), name='retailer-list-create')
-]
+router = DefaultRouter()
+
+router.register(r'customers', CustomerView, basename='customers')
+router.register(r'retailers', RetailerView, basename='retailers')
+
+
+urlpatterns = router.urls
