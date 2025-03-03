@@ -25,3 +25,6 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f'{self.quantity} x {self.product_variant.sku} for Order {self.order.id}'
+
+
+

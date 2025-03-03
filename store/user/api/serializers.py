@@ -13,8 +13,11 @@ class RetailerSerializer(serializers.ModelSerializer):
             'last_name',
             'phone',
             'email',
-            'address'
+            'address',
+            'role'
         ]
+
+
 
 
 class RetailerDetailSerializer(serializers.ModelSerializer):
@@ -44,7 +47,6 @@ class RetailerDetailSerializer(serializers.ModelSerializer):
             else:
                 customer_name = order.customer.username
 
-            print(order)
 
             retailers_order.append({
                 "id": order.id,
@@ -52,13 +54,7 @@ class RetailerDetailSerializer(serializers.ModelSerializer):
                 "total_price": order.total_price,
                 "total_qty": order.total_qty
             })
-        # orders = obj.orders_retailer.all()
-        
-        # orders = obj.orders_retailer.all()
-        # print(orders, "------------------")
-        # If there are orders, serialize them, otherwise return an empty list
-        # if orders:
-        #     return OrderSerializer(orders, many=True, context=self.context).data
+
         return retailers_order
 
 
@@ -72,5 +68,29 @@ class CustomerSerializer(serializers.ModelSerializer):
             'last_name',
             'phone',
             'email',
-            'address'
+            'address',
+            'role'
         ]
+
+
+class CustomerDetailSerializer(RetailerDetailSerializer):
+  
+  def get_orders(self, obj):
+        customers_order = []
+
+        for order in obj.orders_customer.all():
+
+            retailer_name = ''
+            if order.customer.first_name:  # CustomerDetail shows retailer info instead of customer
+                retailer_name = f"{order.customer.first_name} {order.customer.last_name}-{order.customer.username}"
+            else:
+                retailer_name = order.customer.username
+
+            customers_order.append({
+                "id": order.id,
+                "retailer_name": retailer_name,  # Showing retailer info for CustomerDetail
+                "total_price": order.total_price,
+                "total_qty": order.total_qty
+            })
+
+        return customers_order

@@ -25,12 +25,13 @@ SECRET_KEY = 'django-insecure-=mdzb^$ti=7fkr8+lq7&4_867p$i_#@w#s6h^2e%bmv+%6d-mm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,7 +46,9 @@ INSTALLED_APPS = [
     'store.core',
     'store.product',
     'store.order',
-    'store.user'
+    'store.user',
+    'store.dashboard',
+    'store.payment'
     
 ]
 
@@ -81,7 +84,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'store.wsgi.application'
+ASGI_APPLICATION = "store.asgi.application"
 
 
 # Database
@@ -93,6 +96,19 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
+
+
 
 
 # Password validation

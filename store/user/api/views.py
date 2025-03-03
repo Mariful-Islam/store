@@ -1,6 +1,6 @@
 from rest_framework import generics, viewsets
 from store.user.models import User
-from store.user.api.serializers import CustomerSerializer, RetailerSerializer, RetailerDetailSerializer
+from store.user.api.serializers import CustomerSerializer, CustomerDetailSerializer, RetailerSerializer, RetailerDetailSerializer
 from store.pagination import StorePagination
 
 
@@ -16,7 +16,7 @@ class CustomerView(viewsets.ModelViewSet):
         if self.request.method == 'POST':
             return CustomerSerializer
         elif self.action == 'retrieve':
-            return CustomerSerializer
+            return CustomerDetailSerializer
         else:
             return CustomerSerializer
 

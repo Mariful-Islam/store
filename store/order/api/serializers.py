@@ -3,7 +3,9 @@ from rest_framework import serializers
 from store.order.models import Order, OrderItem
 from store.product.models import ProductVariant, Product
 from store.user.models import User
+from store.payment.models import Payment
 from store.user.api.serializers import CustomerSerializer, RetailerSerializer
+from store.payment.api.serializers import PaymentSerializer
 from store.product.api.serializers import ProductVariantSerializer
 import json
 
@@ -109,12 +111,14 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         return order
 
 
-
 class OrderDetailSerializer(serializers.ModelSerializer):
 
     customer = CustomerSerializer(read_only=True)
     retailer = RetailerSerializer(read_only=True)
     variants = serializers.SerializerMethodField()
+    payments = PaymentSerializer(many=True, read_only=True)
+    payment_status = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Order
@@ -127,10 +131,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'updated_at',
             'variants',
             'total_qty',
+            'payments',
+            'payment_status'
         ]
 
     def get_variants(self, obj):
-        # print(obj.items, '-----------')
         variant_list = []
 
         for item in obj.items.all():
@@ -141,7 +146,15 @@ class OrderDetailSerializer(serializers.ModelSerializer):
                     "quantity": item.quantity,
                     "price": item.price,
                 })
-
-        print(variant_list, "------------")
-
+            
         return variant_list
+
+    def get_payment_status(self, obj):
+        payment_amount = 0
+        if obj.payments.all():
+            for payment in obj.payments.all():
+                payment_amount += float(payment.amount)
+
+        if payment_amount == obj.total_price:
+            return True
+        return False

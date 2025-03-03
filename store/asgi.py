@@ -9,8 +9,26 @@ https://docs.djangoproject.com/en/5.1/howto/deployment/asgi/
 
 import os
 
+from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
+from channels.auth import AuthMiddlewareStack
+from django.urls import path
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'store.settings')
+from store.dashboard.consumers import RealTimeChartConsumer
 
-application = get_asgi_application()
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "store.settings")
+
+django_app = get_asgi_application()
+
+application = ProtocolTypeRouter(
+    {
+        "http": django_app,
+        "websocket": AuthMiddlewareStack(
+            URLRouter(
+                [
+                    path("ws/dashboard/", RealTimeChartConsumer.as_asgi()),
+                ]
+            )
+        ),
+    }
+)
