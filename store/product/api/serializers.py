@@ -26,3 +26,28 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                     'category',
                     'variants'
                 ]
+        
+class ProductVariantCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 
+                  'name', 
+                  'product', 
+                  'price',
+                  'stock',
+                  'attribute'
+                ]
+    
+    def create(self, validated_data):
+        name = validated_data['name']
+        price = str(validated_data['price'])
+        stock = str(validated_data['stock'])
+        sku = name + price + stock
+
+        if sku:
+            product_variant = ProductVariant.objects.create(
+                **validated_data,
+                sku=sku
+            )
+
+            return product_variant

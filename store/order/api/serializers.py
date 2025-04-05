@@ -13,7 +13,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     customer_name = serializers.SerializerMethodField()
     retailer_name = serializers.SerializerMethodField()
-
+    payment_status = serializers.SerializerMethodField()
+    payments = PaymentSerializer(many=True, read_only=True)
     class Meta:
         model = Order
         fields = [
@@ -25,7 +26,10 @@ class OrderSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'customer_name',
-            'retailer_name'
+            'retailer_name',
+            'payments',
+            'payment_status'
+            
         ]
 
     def get_customer_name(self, obj):
@@ -40,6 +44,15 @@ class OrderSerializer(serializers.ModelSerializer):
         else:
             return f"{obj.retailer.username}"
         
+    def get_payment_status(self, obj):
+        payment_amount = 0
+
+        if obj.payments.all():
+            for payment in obj.payments.all():
+                payment_amount += float(payment.amount)
+
+        return float(payment_amount) - float(obj.total_price)
+    
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -151,10 +164,9 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
     def get_payment_status(self, obj):
         payment_amount = 0
+
         if obj.payments.all():
             for payment in obj.payments.all():
                 payment_amount += float(payment.amount)
 
-        if payment_amount == obj.total_price:
-            return True
-        return False
+        return float(payment_amount) - float(obj.total_price)

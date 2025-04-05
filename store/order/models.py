@@ -1,6 +1,7 @@
 from django.db import models
 from store.user.models import User
 from store.product.models import ProductVariant
+from django.utils import timezone
 
 
 # Create your models here.
