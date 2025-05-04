@@ -1,5 +1,8 @@
 from django.db import transaction
 from rest_framework import serializers
+from django.shortcuts import get_object_or_404
+
+
 from store.order.models import Order, OrderItem
 from store.product.models import ProductVariant, Product
 from store.user.models import User
@@ -8,6 +11,9 @@ from store.user.api.serializers import CustomerSerializer, RetailerSerializer
 from store.payment.api.serializers import PaymentSerializer
 from store.product.api.serializers import ProductVariantSerializer
 import json
+
+
+
 
 class OrderSerializer(serializers.ModelSerializer):
 
@@ -65,15 +71,11 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id',
-            # 'customer',
-            # 'retailer',
-            'total_price',
             'created_at',
             'updated_at',
             'customer_name',
             'retailer_name',
             'variant_payload',
-            'total_qty',
         ]
 
     def create(self, validated_data):
@@ -106,17 +108,35 @@ class OrderCreateSerializer(serializers.ModelSerializer):
      
 
         for variant in variant_payload:
-            total_price += float(variant['price'])
-            total_qty += float(variant['quantity'])
 
-            variant_instance = ProductVariant.objects.get(id = variant['id'])
-            OrderItem.objects.create(
-                order=order, 
-                product_variant=variant_instance,
-                quantity=variant['quantity'],
-                price=variant['price'],
-            )
+            # ordered_variant = ProductVariant.objects.get(id=variant['id'])
 
+            ordered_variant = get_object_or_404(ProductVariant, id=variant['id'])
+            
+            if int(ordered_variant.stock) >= int(variant['quantity']):
+                total_price += float(variant['price']) * float(variant['quantity'])
+                total_qty += int(variant['quantity'])
+
+                
+                ordered_variant.stock -= int(variant['quantity'])
+                ordered_variant.save()
+
+                variant_instance = ProductVariant.objects.get(id = variant['id'])
+
+                order_item = OrderItem.objects.create(
+                    order=order, 
+                    product_variant=variant_instance,
+                    quantity=variant['quantity'],
+                    price=variant['price'],
+                )
+
+                order_item.save()
+            
+            else:
+                raise serializers.ValidationError(
+                    "Out of stock"
+                )
+                
         order.total_price = total_price
         order.total_qty = total_qty
         order.save()

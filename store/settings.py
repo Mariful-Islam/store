@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-=mdzb^$ti=7fkr8+lq7&4_867p$i_#@w#s6h^2e%bmv+%6d-mm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["localhost", "192.168.1.3", "192.168.1.6", "127.0.0.1"]
 
 
 # Application definition
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'corsheaders',
+    'django_filters',
 
     'store.core',
     'store.product',
@@ -109,6 +110,18 @@ CHANNEL_LAYERS = {
 
 
 
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 10,
+    
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        # ...
+    ),
+}
+
+
+
 
 
 # Password validation
@@ -154,3 +167,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Your React dev server
+    "http://192.168.1.6:3000",
+    "http://172.21.0.1:3000",
+    "http://192.168.1.3:3000"
+]

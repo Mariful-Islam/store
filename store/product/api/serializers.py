@@ -2,9 +2,27 @@ from rest_framework import serializers
 from store.product.models import Product, ProductVariant
 
 class ProductSerializer(serializers.ModelSerializer):
+    total_stock = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = [
+            'id',
+            'name',
+            'description',
+            'image',
+            'slug',
+            'category',
+            'total_stock'
+        ]
+
+    def get_total_stock(self, obj):
+        stock = 0
+        for variant in obj.variants.all():
+            stock += variant.stock
+        return stock
+    
+
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -51,3 +69,19 @@ class ProductVariantCreateSerializer(serializers.ModelSerializer):
             )
 
             return product_variant
+        
+
+class ProductWithVariantSerializer(serializers.ModelSerializer):
+    variants = ProductVariantSerializer(many=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'description',
+            'image',
+            'slug',
+            'category',
+            'variants'
+        ]
