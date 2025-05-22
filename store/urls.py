@@ -53,6 +53,8 @@ urlpatterns = [
     path('store/user/api/', include('store.user.api.urls')),
     path('store/payment/api/', include('store.payment.api.urls')),
     path('store/dashboard/api/', include('store.dashboard.api.urls')),
+    path('store/discount/api/', include('store.discount.api.urls')),
+
 
 
 ]

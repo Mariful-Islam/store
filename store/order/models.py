@@ -10,8 +10,8 @@ class Order(models.Model):
     retailer = models.ForeignKey(User, related_name='orders_retailer', on_delete=models.CASCADE, blank=True, null=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_qty = models.PositiveIntegerField(default=1)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=False, auto_now=False, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now_add=False, auto_now=False, blank=True, null=True)
 
 
     class Meta:

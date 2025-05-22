@@ -11,8 +11,7 @@ from store.user.api.serializers import CustomerSerializer, RetailerSerializer
 from store.payment.api.serializers import PaymentSerializer
 from store.product.api.serializers import ProductVariantSerializer
 import json
-
-
+from datetime import datetime
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -102,7 +101,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             customer=customer,
             retailer=retailer,
             total_price=total_price,
-            total_qty=total_qty
+            total_qty=total_qty,
+            created_at = datetime.now().isoformat()
         )
 
      
@@ -119,6 +119,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
                 
                 ordered_variant.stock -= int(variant['quantity'])
+                
                 ordered_variant.save()
 
                 variant_instance = ProductVariant.objects.get(id = variant['id'])
@@ -139,6 +140,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 
         order.total_price = total_price
         order.total_qty = total_qty
+        # order.created_at = datetime.now()
+        print(datetime.now().isoformat(), "time/.............................")
         order.save()
 
         return order
