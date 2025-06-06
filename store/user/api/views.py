@@ -2,6 +2,10 @@ from rest_framework import generics, viewsets
 from store.user.models import User
 from store.user.api.serializers import CustomerSerializer, CustomerDetailSerializer, RetailerSerializer, RetailerDetailSerializer
 from store.pagination import StorePagination
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 
@@ -34,3 +38,23 @@ class RetailerView(viewsets.ModelViewSet):
             return RetailerDetailSerializer
         else:
             return RetailerSerializer
+        
+
+
+class Signup(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if User.objects.filter(username=username).exists():
+            return Response({"error": "Username already exists"}, status=400)
+
+        user = User.objects.create_user(username=username, password=password)
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }, status=201)

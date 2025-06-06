@@ -14,7 +14,7 @@ from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
 from django.urls import path
 
-from store.dashboard.consumers import RealTimeChartConsumer
+from store.dashboard import routing
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "store.settings")
 
@@ -24,11 +24,7 @@ application = ProtocolTypeRouter(
     {
         "http": django_app,
         "websocket": AuthMiddlewareStack(
-            URLRouter(
-                [
-                    path("ws/dashboard/", RealTimeChartConsumer.as_asgi()),
-                ]
-            )
+            URLRouter(routing.ws_urlpatters)
         ),
     }
 )

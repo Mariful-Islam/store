@@ -1,7 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-class RealTimeChartConsumer(AsyncWebsocketConsumer):
+class DashboardConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = 'dashboard'
         self.room_group_name = f'dashboard_{self.room_name}'

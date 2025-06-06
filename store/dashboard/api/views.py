@@ -9,167 +9,223 @@ from store.order.models import Order, OrderItem
 from store.user.models import User
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models.functions import TruncHour, TruncDay, TruncWeek, TruncMonth
-from django.db.models.functions import TruncDate
+from django.db.models.functions import TruncHour, TruncDay, TruncWeek, TruncMonth, TruncYear, TruncDate
+from django.utils.dateparse import parse_date
+from rest_framework import generics
+import datetime
+from store.dashboard.api.serializers import SellsSerializer
+from django.db.models.functions import ExtractHour
+import math
+from dateutil.relativedelta import relativedelta
+from collections import OrderedDict
+from datetime import datetime
+from django.utils.timezone import make_aware
+from calendar import monthrange
 
+today = datetime.today()
 
-now = timezone.now()
-today = now.date()
-start_of_week = today - timedelta(days=today.weekday())
-start_of_month = today.replace(day=1)
-three_months_ago = today - timedelta(days=90)
-six_months_ago = today - timedelta(days=180)
-one_year_age = today - timedelta(days=365)
+class CounterAPIView(APIView):
 
-
-
-
-@api_view(['GET'])
-def dashboardAPI(request):
-
-    total_product = Product.objects.all().count()
-    total_variant = ProductVariant.objects.all().count()
-    stock = ProductVariant.objects.aggregate(sum = Sum('stock'))
-    order = Order.objects.aggregate(total_order_qty = Sum('total_qty'), total_order_price = Sum('total_price'))
-    totol_order = Order.objects.all().count()
-    customers = User.objects.filter(role='CUSTOMER').count()
-    retailers = User.objects.filter(role='RETAILER').count()
-
-
-    orders_by_hour = (
-        Order.objects
-        .filter(created_at__date=today)
-        .annotate(hour=TruncHour('created_at'))
-        .values('hour')
-        .annotate(total_sales=Sum('total_price'))
-        .order_by('hour')
-    )
-
-
-    hourly_sells_result = []
-    for entry in orders_by_hour:
-        formatted_time = entry['hour'].strftime("%I:00%p")
-        hourly_sells_result.append({
-            "label": formatted_time,
-            "total_sales": float(entry['total_sales'])
-        })
-    
-
-
-    orders_by_daily = Order.objects.filter(created_at__gte=today - timedelta(days=30)).annotate(
-        day=TruncDay('created_at')
-    ).values('day').annotate(total_sales=Sum('total_price')).order_by('day')
-    
-    daily_sells_result = []
-    for entry in orders_by_daily:
-        formatted_time = entry['day'].strftime("%d %b")
-        daily_sells_result.append({
-            "label": formatted_time,
-            "total_sales": float(entry['total_sales'])
-        })
-
-
-
-
-    orders_by_monthly = Order.objects.filter(
-        created_at__gte=today - timedelta(days=365)
-    ).annotate(
-        month=TruncMonth('created_at')
-    ).values('month').annotate(
-        total_sales=Sum('total_price')
-    ).order_by('month')
-
-    # Format the result for use (e.g., for charts)
-    monthly_sells_result = []
-    for entry in orders_by_monthly:
-        formatted_time = entry['month'].strftime("%b")  # e.g., "Jan", "Feb"
-        monthly_sells_result.append({
-            "label": formatted_time,
-            "total_sales": float(entry['total_sales'])  # Convert Decimal to float for JSON or frontend use
-        })
-
-
-    # Aggregate total quantity sold for each product variant
-    product_sales = (
-        OrderItem.objects
-        .values('product_variant')  # Group by product_variant
-        .annotate(total_quantity_sold=Sum('quantity'))  # Sum of quantities
-        .order_by('-total_quantity_sold')  # Sort from highest to lowest
-    )
-
-    # Fetch product details and return
-    top_selling_products = []
-    for item in product_sales[0: 12]:
-        try:
-            variant = ProductVariant.objects.get(id=item['product_variant'])
-            top_selling_products.append({
-                'variant_id': variant.id,
-                'sku': variant.sku,
-                'name': str(variant),  # Assumes __str__ is defined in ProductVariant
-                'total_quantity_sold': item['total_quantity_sold'],
-                'total_sold_amount': item['total_quantity_sold'] * variant.price,
-                'price': variant.price,
-                'stock': variant.stock
-            })
-        except ProductVariant.DoesNotExist:
-            continue
-
-    
-
-
-    
-    data = {
-        "total_product": total_product,
-        "total_variant": total_variant,
-        "stock": stock['sum'],
-        "totol_order": totol_order,
-        "total_order_qty": order['total_order_qty'],
-        "total_order_price": order['total_order_price'],
-        "customers": customers,
-        "retailers": retailers,
-        "sells": {"hourly" : hourly_sells_result, "daily": daily_sells_result, "monthly": monthly_sells_result},
-        "top_selling_products": top_selling_products
-
-    }
-
-    return Response(data, status=status.HTTP_200_OK)
-
-
-
-
-class SalesGraphView(APIView):
     def get(self, request):
-        # Range selector (default to last 7 days)
-        range_param = request.GET.get("range", "last_7_days")
-        current_time = now
+        # Parse date filters from query params
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
 
-        time_ranges = {
-            "today": current_time.replace(hour=0, minute=0, second=0),
-            "yesterday": current_time - timedelta(days=1),
-            "last_7_days": current_time - timedelta(days=7),
-            "last_10_days": current_time - timedelta(days=10),
-            "last_1_month": current_time - timedelta(days=30),
-            "last_6_months": current_time - timedelta(days=182),
-            "last_1_year": current_time - timedelta(days=365),
-        }
+        # Default to last 30 days
+        today = timezone.now().date()
+        default_start = today - timedelta(days=30)
+        start_date = parse_date(start_date) if start_date else default_start
+        end_date = parse_date(end_date) if end_date else today
 
-        start_time = time_ranges.get(range_param, current_time - timedelta(days=7))
-
-        # Group sales by day and sum
-        sales_data = (
-            Order.objects.filter(created_at__gte=start_time)
-            .annotate(date=TruncDate('created_at'))
-            .values('date')
-            .annotate(total_sales=Sum('total_price'))
-            .order_by('date')
+        # Filtered OrderItems
+        order_items = OrderItem.objects.select_related('order').filter(
+            order__created_at__date__gte=start_date,
+            order__created_at__date__lte=end_date
         )
 
-        # Prepare graph data
-        x_data = [entry['date'].strftime("%Y-%m-%d") for entry in sales_data]
-        y_data = [float(entry['total_sales']) for entry in sales_data]
+        # General stats
+        product_count = Product.objects.count()
+        variant_count = ProductVariant.objects.count()
+        stock_count = ProductVariant.objects.aggregate(sum = Sum('stock'))
+        
+        customer_count = User.objects.filter(role='CUSTOMER').count()
+        total_sales = order_items.aggregate(revenue=Sum('price'))['revenue'] or 0
+        total_orders = Order.objects.filter(created_at__date__range=(start_date, end_date)).count()
 
         return Response({
-            "x": x_data,
-            "y": y_data,
-            "label": f"Sales from {start_time.date()} to {current_time.date()}"
+            'product_count': product_count,
+            'total_variant': variant_count,
+            'stock': stock_count['sum'],
+            'customers': customer_count,
+            'total_sales': total_sales,
+            'total_orders': total_orders,
+           
         })
+
+
+
+class SalesView(APIView):
+    def get(self, request):
+
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        date_str = request.query_params.get('date')
+
+        month_str = request.query_params.get('month')
+
+
+        if start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+            date_diff = (start_date-end_date).days 
+
+            sales_data = Order.objects.filter(
+                                            created_at__gte=end_date.date(), 
+                                            created_at__lte=start_date.date()
+                                        )
+
+
+            if date_diff <= 30:
+                sales_data_day = sales_data.annotate(date = TruncDate('created_at')).values('date').annotate(total_sales=Sum('total_price')).order_by('date')
+
+                sales_by_day = {}
+
+                for i in reversed(range(int(date_diff))):
+                    label = today - timedelta(days=i)
+         
+                    sales_by_day[label.strftime('%d %B %Y')] = 0
+
+
+                for entry in sales_data_day:
+                    label = entry['date'].strftime('%d %B %Y')
+           
+                    sales_by_day[label] = entry['total_sales']
+                
+                return Response(sales_by_day)
+
+            else:
+                sales_data_monthly = sales_data.annotate(month = TruncMonth('created_at')).values('month').annotate(total_sales=Sum('total_price')).order_by('month')
+
+                sales_by_month = {}
+                month = math.floor(date_diff/30)
+
+                for i in reversed(range(month)):
+                    label_date = today - relativedelta(months=i)  # Get previous i-th month
+                    label = label_date.strftime('%b %Y')  # Format as 'YYYY-MM'
+                    sales_by_month[label] = 0
+
+
+                for entry in sales_data_monthly:
+                    label = entry['month'].strftime('%b %Y')
+           
+                    sales_by_month[label] = entry['total_sales']
+                
+                return Response(sales_by_month)
+            
+
+        elif month_str:
+
+            month = datetime.strptime(month_str, '%Y-%m')
+            
+            start_of_month = make_aware(month)
+
+            print(start_of_month, 'start_of_month')
+            
+            if month.month == 12:
+                end_of_month = make_aware(datetime(month.year + 1, 1, 1)) - timedelta(seconds=1)
+            else:
+                end_of_month = make_aware(datetime(month.year, month.month + 1, 1)) - timedelta(seconds=1)
+
+            # Filter orders
+            sales_data_per_month = Order.objects.filter(
+                created_at__gte=start_of_month,
+                created_at__lte=end_of_month
+            )
+
+            sales_data_per_month_json = sales_data_per_month.annotate(date=TruncDate('created_at')).values('date').annotate(total_sales=Sum('total_price')).order_by('date')
+
+            last_day = monthrange(month.year, month.month)[1]
+
+            sales_by_selected_month = {}
+
+            for day in range(1, last_day + 1):
+                label = datetime(month.year, month.month, day)
+                sales_by_selected_month[label.strftime('%d %B %Y')] = 0
+
+
+            for entry in sales_data_per_month_json:
+                label = entry['date'].strftime('%d %B %Y')
+        
+                sales_by_selected_month[label] = entry['total_sales']
+            
+
+
+            return Response(sales_by_selected_month)
+
+        else:
+            # Get selected date or use today
+            if date_str:
+                try:
+                    selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=400)
+            else:
+                selected_date = today.date()
+
+           
+            
+            # Filter orders for that date
+            orders = Order.objects.filter(created_at__date=selected_date)
+
+            # Group orders by hour and sum total_price
+            hourly_sales = (
+                orders.annotate(hour=ExtractHour('created_at'))
+                .values('hour')
+                .annotate(total_sales=Sum('total_price'))
+                .order_by('hour')
+            )
+
+            # Build sales dictionary with AM/PM hour labels
+            sales_by_hour = {}
+
+            # Initialize all 24 hours with 0
+            for h in range(24):
+                label = datetime.strptime(str(h), "%H").strftime("%I %p")
+                sales_by_hour[label] = 0
+
+            # Fill in actual sales
+            for entry in hourly_sales:
+                label = datetime.strptime(str(entry['hour']), "%H").strftime("%I %p")
+                sales_by_hour[label] = entry['total_sales']
+
+            return Response(sales_by_hour)
+
+
+
+class TopSellingProducts(APIView):
+    def get(self, request):
+
+        top_selling_variants = []
+        
+
+        top_variants = (
+            OrderItem.objects
+            .values('product_variant')
+            .annotate(total_quantity=Sum('quantity'))
+            .order_by('-total_quantity')
+        )
+
+        # Enrich with actual ProductVariant instances (optional)
+        variant_ids = [item['product_variant'] for item in top_variants]
+        variants = ProductVariant.objects.in_bulk(variant_ids)
+
+        # Example output
+        for item in top_variants[0:10]:
+            variant = variants.get(item['product_variant'])
+            if variant:
+                top_selling_variants.append({'id': variant.id, 'product_variant': variant.name, 'stock': variant.stock, 'total_quantity': item['total_quantity']})
+
+
+        return Response(top_selling_variants)
