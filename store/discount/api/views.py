@@ -27,7 +27,7 @@ class DiscountModelViewSet(viewsets.ModelViewSet):
 
     filter_backends = (filters.DjangoFilterBackend, drf_filter.SearchFilter, drf_filter.OrderingFilter)
     search_fields = ['name', 'product__name', 'type']
-    ordering_fields = ['name', 'created_at', 'updated_at']
+    ordering_fields = ['name', 'created_at', 'updated_at', 'discount_amount']
     filterset_class = DiscountFilter
 
     def get_serializer_class(self):

@@ -2,17 +2,15 @@ from django.db import models
 from store.user.models import User
 from store.product.models import ProductVariant
 from django.utils import timezone
+from store.core.models import AbstactDateTime
 
 
 # Create your models here.
-class Order(models.Model):
+class Order(AbstactDateTime):
     customer = models.ForeignKey(User, related_name='orders_customer', on_delete=models.CASCADE, blank=True, null=True)
     retailer = models.ForeignKey(User, related_name='orders_retailer', on_delete=models.CASCADE, blank=True, null=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_qty = models.PositiveIntegerField(default=1)
-    created_at = models.DateTimeField(auto_now_add=False, auto_now=False, blank=True, null=True)
-    updated_at = models.DateTimeField(auto_now_add=False, auto_now=False, blank=True, null=True)
-
 
     class Meta:
         ordering = ['-created_at']

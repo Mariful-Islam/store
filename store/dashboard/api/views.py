@@ -27,30 +27,25 @@ today = datetime.today()
 class CounterAPIView(APIView):
 
     def get(self, request):
-        # Parse date filters from query params
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
 
-        # Default to last 30 days
         today = timezone.now().date()
         default_start = today - timedelta(days=30)
-        start_date = parse_date(start_date) if start_date else default_start
-        end_date = parse_date(end_date) if end_date else today
 
-        # Filtered OrderItems
         order_items = OrderItem.objects.select_related('order').filter(
-            order__created_at__date__gte=start_date,
-            order__created_at__date__lte=end_date
+            order__created_at__date=today,
         )
 
-        # General stats
         product_count = Product.objects.count()
         variant_count = ProductVariant.objects.count()
         stock_count = ProductVariant.objects.aggregate(sum = Sum('stock'))
         
         customer_count = User.objects.filter(role='CUSTOMER').count()
         total_sales = order_items.aggregate(revenue=Sum('price'))['revenue'] or 0
-        total_orders = Order.objects.filter(created_at__date__range=(start_date, end_date)).count()
+
+
+        total_orders = Order.objects.filter(
+                created_at__date=today).count()
+        
 
         return Response({
             'product_count': product_count,
@@ -130,8 +125,6 @@ class SalesView(APIView):
             month = datetime.strptime(month_str, '%Y-%m')
             
             start_of_month = make_aware(month)
-
-            print(start_of_month, 'start_of_month')
             
             if month.month == 12:
                 end_of_month = make_aware(datetime(month.year + 1, 1, 1)) - timedelta(seconds=1)
@@ -225,7 +218,56 @@ class TopSellingProducts(APIView):
         for item in top_variants[0:10]:
             variant = variants.get(item['product_variant'])
             if variant:
-                top_selling_variants.append({'id': variant.id, 'product_variant': variant.name, 'stock': variant.stock, 'total_quantity': item['total_quantity']})
+                top_selling_variants.append({'id': variant.id, 'product_variant': variant.name, 'price': variant.price, 'stock': variant.stock, 'total_quantity': item['total_quantity']})
 
 
         return Response(top_selling_variants)
+
+
+class TopCustomer(APIView):
+    def get(self, request):
+
+
+        orders = Order.objects.values('customer').annotate(total_spend=Sum('total_price')).order_by('-total_spend')
+
+        customer_ids = [order['customer'] for order in orders]
+        customers = User.objects.in_bulk(customer_ids)
+
+
+        top_customers = []
+        
+        for item in orders[0:10]:
+            customer = customers.get(item['customer'])
+            if customer:
+                top_customers.append({
+                    'id': customer.id, 
+                    'name': f"{customer.first_name} {customer.last_name}", 
+                    "phone": customer.phone, 
+                    "total_spend": item['total_spend'] 
+                })
+            
+        return Response(top_customers)
+    
+
+
+class TopRetailer(APIView):
+    def get(self, request):
+
+        orders = Order.objects.values('retailer').annotate(total_sold=Sum('total_price')).order_by('-total_sold')
+
+        retailer_ids = [order['retailer'] for order in orders]
+        retailers = User.objects.in_bulk(retailer_ids)
+
+        top_retailers = []
+        
+        for item in orders[0:10]:
+            retailer = retailers.get(item['retailer'])
+            if retailer:
+                top_retailers.append({
+                    'id': retailer.id, 
+                    'name': f"{retailer.first_name} {retailer.last_name}", 
+                    "phone": retailer.phone, 
+                    "total_sold": item['total_sold'] 
+                })
+            
+        return Response(top_retailers)
