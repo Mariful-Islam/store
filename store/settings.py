@@ -179,7 +179,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'static/dist/assets',
+    BASE_DIR / 'static/assets',
 ]
 
 # For production
