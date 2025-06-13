@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-
-
+from django_filters import rest_framework as filters
+from rest_framework import filters as drf_filter
 
 
 class CustomerView(viewsets.ModelViewSet):
@@ -15,6 +15,9 @@ class CustomerView(viewsets.ModelViewSet):
     queryset = User.objects.filter(role='CUSTOMER')
     pagination_class = StorePagination
     lookup_field = 'id'
+    filter_backends = (filters.DjangoFilterBackend, drf_filter.SearchFilter, drf_filter.OrderingFilter)
+    search_fields = ['username', 'first_name', 'last_name']
+    ordering_fields = ['first_name', 'email']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -30,6 +33,9 @@ class RetailerView(viewsets.ModelViewSet):
     queryset = User.objects.filter(role='RETAILER')
     pagination_class = StorePagination
     lookup_field = 'id'
+    filter_backends = (filters.DjangoFilterBackend, drf_filter.SearchFilter, drf_filter.OrderingFilter)
+    search_fields = ['username', 'first_name', 'last_name']
+    ordering_fields = ['first_name', 'email']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

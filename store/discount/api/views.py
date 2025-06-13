@@ -26,7 +26,7 @@ class DiscountModelViewSet(viewsets.ModelViewSet):
     pagination_class = StorePagination
 
     filter_backends = (filters.DjangoFilterBackend, drf_filter.SearchFilter, drf_filter.OrderingFilter)
-    search_fields = ['name', 'product__name', 'type']
+    search_fields = ['name', 'products__name', 'type', 'discount_amount']
     ordering_fields = ['name', 'created_at', 'updated_at', 'discount_amount']
     filterset_class = DiscountFilter
 
