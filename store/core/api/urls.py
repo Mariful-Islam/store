@@ -1,7 +1,7 @@
 from django.urls import path
-from store.core.d
+from store.core.api.views import StoreCreateView
 
 urlpatterns = [
-    path('store/', dashboardAPI, name='dashboard-api')
+    path('store/', StoreCreateView.as_view(), name='dashboard-api')
 ]
 

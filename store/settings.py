@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'store.user',
     'store.dashboard',
     'store.payment',
-    'store.discount'
+    'store.discount',
+    'store.category'
     
 ]
 

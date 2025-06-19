@@ -17,21 +17,19 @@ from datetime import datetime
 class OrderSerializer(serializers.ModelSerializer):
 
     customer_name = serializers.SerializerMethodField()
-    retailer_name = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
     payments = PaymentSerializer(many=True, read_only=True)
+    
     class Meta:
         model = Order
         fields = [
             'id',
             'customer',
-            'retailer',
             'total_price',
             'total_qty',
             'created_at',
             'updated_at',
             'customer_name',
-            'retailer_name',
             'payments',
             'payment_status'
             
@@ -43,11 +41,6 @@ class OrderSerializer(serializers.ModelSerializer):
         else:
             return f"{obj.customer.username}"
         
-    def get_retailer_name(self, obj):
-        if obj.retailer.first_name:
-            return f"{obj.retailer.first_name} {obj.retailer.last_name}" 
-        else:
-            return f"{obj.retailer.username}"
         
     def get_payment_status(self, obj):
         payment_amount = 0
@@ -63,7 +56,6 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderCreateSerializer(serializers.ModelSerializer):
 
     customer_name = serializers.CharField(write_only=True)
-    retailer_name = serializers.CharField(write_only=True)
     variant_payload = serializers.ListField(write_only=True)
 
     class Meta:
@@ -73,7 +65,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'customer_name',
-            'retailer_name',
             'variant_payload',
         ]
 
@@ -81,7 +72,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         # Extract the fields from validated_data
         variant_payload = validated_data.pop('variant_payload', [])
         customer_name = validated_data.get('customer_name', '')
-        retailer_name = validated_data.get('retailer_name', '')
+        # retailer_name = 
 
         total_price = 0
         total_qty = 0
@@ -91,15 +82,15 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             defaults={'role': 'CUSTOMER'}
         )
 
-        retailer, created = User.objects.get_or_create(
-            username=retailer_name, 
-            defaults={'role': 'RETAILER'}
-        )
+        # retailer, created = User.objects.get_or_create(
+        #     username=retailer_name, 
+        #     defaults={'role': 'RETAILER'}
+        # )
 
  
         order = Order.objects.create(
             customer=customer,
-            retailer=retailer,
+            # retailer=retailer,
             total_price=total_price,
             total_qty=total_qty,
             created_at = datetime.now().isoformat()
@@ -140,7 +131,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 
         order.total_price = total_price
         order.total_qty = total_qty
-        # order.created_at = datetime.now()
+        order.created_at = datetime.now()
         print(datetime.now().isoformat(), "time/.............................")
         order.save()
 
@@ -150,7 +141,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(serializers.ModelSerializer):
 
     customer = CustomerSerializer(read_only=True)
-    retailer = RetailerSerializer(read_only=True)
     variants = serializers.SerializerMethodField()
     payments = PaymentSerializer(many=True, read_only=True)
     payment_status = serializers.SerializerMethodField()
@@ -161,7 +151,6 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'customer',
-            'retailer',
             'total_price',
             'created_at',
             'updated_at',

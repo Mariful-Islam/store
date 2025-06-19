@@ -8,7 +8,6 @@ from store.core.models import AbstactDateTime
 # Create your models here.
 class Order(AbstactDateTime):
     customer = models.ForeignKey(User, related_name='orders_customer', on_delete=models.CASCADE, blank=True, null=True)
-    retailer = models.ForeignKey(User, related_name='orders_retailer', on_delete=models.CASCADE, blank=True, null=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_qty = models.PositiveIntegerField(default=1)
 

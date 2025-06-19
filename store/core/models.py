@@ -18,3 +18,12 @@ class AbstactDateTime(models.Model):
 class StoreInfo(models.Model):
     name = models.CharField(max_length=100)
     logo = models.ImageField(upload_to='logo')
+
+
+
+class AbsNameDesc(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+
+    class Meta:
+        abstract=True
